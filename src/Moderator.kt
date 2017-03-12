@@ -144,7 +144,8 @@ class Moderator(val email: String, val password: String) {
 
     fun sendEmailToMods(emailBody: String) {
 
-        val moderators = File("moderators.txt").readLines().joinToString(separator = ",")
+        // TODO: Extract this to a file?
+        val moderators = "earleyg@carleton.edu, garfinklei@carleton.edu"
 
         val modEmails = InternetAddress.parse(moderators)
 
