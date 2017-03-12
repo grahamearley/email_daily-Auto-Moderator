@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.*
 import javax.mail.*
 import javax.mail.internet.InternetAddress
@@ -5,6 +6,9 @@ import javax.mail.internet.MimeMessage
 import javax.mail.search.*
 
 class Moderator(val email: String, val password: String) {
+
+    // We'll use this to print thing we want to send to the mods as an email
+    val emailStringBuilder: StringBuilder = StringBuilder()
 
     val properties: Properties get() {
         val props = Properties()
@@ -56,16 +60,14 @@ class Moderator(val email: String, val password: String) {
         this.requestSubscriberList()
         val timeOfRequest = Date()
 
-        println("Sent email to Sympa requesting subscriber list at $timeOfRequest.")
-        println("Pausing for 2 minutes...")
-        println()
+        emailStringBuilder.append("Sent email to Sympa requesting subscriber list at $timeOfRequest. \n")
+        emailStringBuilder.append("Pausing for 2 minutes...\n\n")
 
         Thread.sleep(120000)
 
         val subscriberListMessage = this.searchForRecentSubscriberEmail(timeOfRequest).last()
 
-        println("Subscriber list email received from Sympa at ${subscriberListMessage.receivedDate}")
-        println()
+        emailStringBuilder.append("Subscriber list email received from Sympa at ${subscriberListMessage.receivedDate}\n\n")
 
         return this.getSubscriberSetFromEmail(subscriberListMessage)
     }
@@ -126,23 +128,44 @@ class Moderator(val email: String, val password: String) {
                 .plus("emaildailymod@gmail.com") // Don't forget the automod! Don't delete the mod!
 
 
-        println("People who emailed between $yesterday and $today: ${peopleWhoEmailed.count()}")
-        println(peopleWhoEmailed.sortedBy {it})
-        println()
+        emailStringBuilder.append("People who emailed between $yesterday and $today: ${peopleWhoEmailed.count()}\n")
+        emailStringBuilder.append(peopleWhoEmailed.sortedBy {it})
+        emailStringBuilder.append("\n\n")
 
-        println("Current subscribers: ${subscribers.count()}")
-        println(subscribers.sortedBy {it})
-        println()
+        emailStringBuilder.append("Current subscribers: ${subscribers.count()}\n")
+        emailStringBuilder.append(subscribers.sortedBy {it})
+        emailStringBuilder.append("\n\n")
 
         // Subscribers - People Who Emailed = People who didn't email!
         return subscribers.minus(peopleWhoEmailed)
+    }
+
+    fun sendEmailToMods(emailBody: String) {
+
+        val moderators = File("moderators.txt").readLines().joinToString(separator = ",")
+
+        val modEmails = InternetAddress.parse(moderators)
+
+        val message = MimeMessage(session)
+        message.setFrom(InternetAddress(email))
+        message.setRecipients(Message.RecipientType.TO, modEmails)
+        message.subject = "Auto Moderator Removals Update"
+        message.setText(emailBody)
+
+        Transport.send(message)
     }
 }
 
 fun main(args: Array<String>) {
     val mod = Moderator(EMAIL, PASSWORD)
-
     // TODO: search for subscriber email until it arrives, instead of hardcoding 2 minutes
 
-    mod.getEmailsToUnsubscribe().forEach(::println)
+    val emailsToUnsubscribe = mod.getEmailsToUnsubscribe()
+    emailsToUnsubscribe.forEach(::println)
+
+    // Email this list to the mods!
+    mod.sendEmailToMods("Time to make some cuts. \n\n" +
+            mod.emailStringBuilder.toString() +
+            "\nPeople to unsubscribe:\n" +
+            emailsToUnsubscribe)
 }
