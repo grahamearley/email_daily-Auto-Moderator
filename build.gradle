@@ -25,3 +25,9 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib:1.0.5"
     compile "com.sun.mail:javax.mail:1.5.6"
 }
+
+// For Heroku deployment:
+apply plugin:'application'
+mainClassName = "ModeratorKt"
+applicationName = "app"
+task stage(dependsOn: ['clean', 'installApp'])
