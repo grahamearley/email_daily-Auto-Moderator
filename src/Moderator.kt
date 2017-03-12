@@ -27,6 +27,7 @@ class Moderator(val email: String, val password: String) {
     val store: Store = session.getStore("imaps")
     private val yesterday: Date get() {
         val yesterdayCal = Calendar.getInstance()
+        yesterdayCal.timeZone = TimeZone.getTimeZone("America/Chicago")
 
         // Subtract a day to get to yesterday!
         yesterdayCal.add(Calendar.DATE, -1)
@@ -39,6 +40,7 @@ class Moderator(val email: String, val password: String) {
     }
     private val today: Date get() {
         val todayCal = Calendar.getInstance()
+        todayCal.timeZone = TimeZone.getTimeZone("America/Chicago")
 
         // Set time to be end of yesterday:
         todayCal.set(Calendar.HOUR_OF_DAY, 0)
