@@ -169,6 +169,6 @@ fun main(args: Array<String>) {
     // Email this list to the mods!
     mod.sendEmailToMods("Time to make some cuts. \n\n" +
             mod.emailStringBuilder.toString() +
-            "\nPeople to unsubscribe: ${emailsToUnsubscribe.size} \n" +
+            "\nPeople to unsubscribe: ${emailsToUnsubscribe.count()} \n" +
             emailsToUnsubscribe)
 }
