@@ -129,7 +129,6 @@ class Moderator(val email: String, val password: String) {
                 .toSet()
                 .plus("emaildailymod@gmail.com") // Don't forget the automod! Don't delete the mod!
 
-
         emailStringBuilder.append("People who emailed between $yesterday and $today: ${peopleWhoEmailed.count()}\n")
         emailStringBuilder.append(peopleWhoEmailed.sortedBy {it})
         emailStringBuilder.append("\n\n")
@@ -158,7 +157,7 @@ class Moderator(val email: String, val password: String) {
         Transport.send(message)
     }
 
-    fun sendEmailToList(emailBody: String) {
+    fun emailListWithRemovals(removals: Set<String?>) {
         val emailList = "email_daily_or_be_removed@lists.carleton.edu"
         val listAddress = InternetAddress.parse(emailList)
 
@@ -166,7 +165,26 @@ class Moderator(val email: String, val password: String) {
         message.setFrom(InternetAddress(email))
         message.setRecipients(Message.RecipientType.TO, listAddress)
         message.subject = "Robo Mod has an update for you..."
-        message.setText(emailBody)
+
+        if (removals.isEmpty()) {
+            message.setText("No removals today! What a miracle!")
+        } else {
+            val builder = StringBuilder()
+            builder.append("<html><head>"
+                    + "<title>ALL HAIL LORD EDOBR</title>"
+                    + "</head>"
+                    + "<body><div><strong>Lord Edobr hath written that the following people are removed:</strong></div>")
+
+            removals.forEach { email ->
+                val username = email?.split("@")?.first()
+                builder.append("<div>$email</div>")
+                builder.append("<div><img src=https://apps.carleton.edu/stock/ldapimage.php?id=$username&source=campus_directory/></div>")
+            }
+
+            builder.append("<div>Let that be a lesson.</div></body></html>")
+            message.setText(builder.toString(), "US-ASCII", "html")
+        }
+
 
         Transport.send(message)
     }
@@ -178,7 +196,7 @@ class Moderator(val email: String, val password: String) {
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sympa@lists.carleton.edu"))
             message.subject = ""
             message.setText(
-                    emailAddresses.joinToString(separator = "\n", prefix = "DEL email_daily_or_be_removed "))
+                    emailAddresses.joinToString(separator = "\n", transform = {address -> "DEL email_daily_or_be_removed $address"}))
 
             Transport.send(message)
         }
@@ -194,11 +212,5 @@ fun main(args: Array<String>) {
 
     mod.unsubscribeUsers(emailsToUnsubscribe)
 
-    // Email the list:
-    if (emailsToUnsubscribe.isEmpty()) {
-        mod.sendEmailToList("Wow, no removals today! what a miracle.")
-    } else {
-        mod.sendEmailToList("Time to make some cuts. \n\n" +
-                "These emails have been unsubscribed: $emailsToUnsubscribe. \n\n\n F")
-    }
+    mod.emailListWithRemovals(emailsToUnsubscribe)
 }
