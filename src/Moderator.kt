@@ -157,6 +157,32 @@ class Moderator(val email: String, val password: String) {
 
         Transport.send(message)
     }
+
+    fun sendEmailToList(emailBody: String) {
+        val emailList = "email_daily_or_be_removed@lists.carleton.edu"
+        val listAddress = InternetAddress.parse(emailList)
+
+        val message = MimeMessage(session)
+        message.setFrom(InternetAddress(email))
+        message.setRecipients(Message.RecipientType.TO, listAddress)
+        message.subject = "Robo Mod has an update for you..."
+        message.setText(emailBody)
+
+        Transport.send(message)
+    }
+
+    fun unsubscribeUsers(emailAddresses: Set<String?>) {
+        if (emailAddresses.isNotEmpty()) {
+            val message = MimeMessage(session)
+            message.setFrom(InternetAddress(email))
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse("sympa@lists.carleton.edu"))
+            message.subject = ""
+            message.setText(
+                    emailAddresses.joinToString(separator = "\n", prefix = "DEL email_daily_or_be_removed "))
+
+            Transport.send(message)
+        }
+    }
 }
 
 fun main(args: Array<String>) {
@@ -166,9 +192,13 @@ fun main(args: Array<String>) {
     val emailsToUnsubscribe = mod.getEmailsToUnsubscribe()
     emailsToUnsubscribe.forEach(::println)
 
-    // Email this list to the mods!
-    mod.sendEmailToMods("Time to make some cuts. \n\n" +
-            mod.emailStringBuilder.toString() +
-            "\nPeople to unsubscribe: ${emailsToUnsubscribe.count()} \n" +
-            emailsToUnsubscribe)
+    mod.unsubscribeUsers(emailsToUnsubscribe)
+
+    // Email the list:
+    if (emailsToUnsubscribe.isEmpty()) {
+        mod.sendEmailToList("Wow, no removals today! what a miracle.")
+    } else {
+        mod.sendEmailToList("Time to make some cuts. \n\n" +
+                "These emails have been unsubscribed: $emailsToUnsubscribe. \n\n\n F")
+    }
 }
