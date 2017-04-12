@@ -5,8 +5,7 @@ fun main(args: Array<String>) {
     }
 
     val password = args.first()
-    val moderator = Moderator(EMAIL, password)
-    // TODO: search for subscriber email until it arrives, instead of hardcoding 2 minutes
+    val moderator = Moderator("emaildailymod@gmail.com", password)
 
     val emailsToUnsubscribe = moderator.getEmailsToUnsubscribe()
 

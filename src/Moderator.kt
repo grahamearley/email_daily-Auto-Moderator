@@ -17,12 +17,15 @@ class Moderator(val email: String, val password: String) {
         props.put("mail.smtp.port", "465")
         return props
     }
+
     val session: Session = Session.getDefaultInstance(properties, object: Authenticator() {
         override fun getPasswordAuthentication(): PasswordAuthentication {
             return PasswordAuthentication(email, password)
         }
     })
+
     val store: Store = session.getStore("imaps")
+
     private val inbox: Folder get() {
         val inbox = store.getFolder("INBOX")
         inbox.open(Folder.READ_ONLY)
@@ -43,6 +46,7 @@ class Moderator(val email: String, val password: String) {
         yesterdayCal.set(Calendar.SECOND, 0)
         return yesterdayCal.time
     }
+
     private val today: Date get() {
         val todayCal = Calendar.getInstance()
         todayCal.timeZone = TimeZone.getTimeZone("America/Chicago")
@@ -65,6 +69,8 @@ class Moderator(val email: String, val password: String) {
      *   Then it assembles the list of subscribers into a `Set`.
      *
      *   (This is a convenience method, combining the helper methods that follow.)
+     *
+     *    TODO: search for subscriber email until it arrives, instead of hardcoding 2 minutes
      */
     private fun getSubscribers(): Set<String?> {
         this.requestSubscriberList()
