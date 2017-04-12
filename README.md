@@ -6,7 +6,4 @@ Once it knows who hasn't emailed, it sends an email command to Sympa to delete t
 ### Installation
 The easiest way to run this script is to download IntelliJ and to load this project in IntelliJ.
 
-Then run the `main(...)` function in `Moderator.kt`.
-
-### Security note:
-As it is now, this repo MUST remain private. It contains the password to the auto-mod gmail account.
+Then run the `main(...)` function in `Moderator.kt` with a single command-line argument: the password for the email daily mod gmail account.
