@@ -1,4 +1,3 @@
-import java.io.File
 import java.util.*
 import javax.mail.*
 import javax.mail.internet.InternetAddress
@@ -7,9 +6,8 @@ import javax.mail.search.*
 
 class Moderator(val email: String, val password: String) {
 
-    // We'll use this to print thing we want to send to the mods as an email
-    val emailStringBuilder: StringBuilder = StringBuilder()
-
+    //// Properties, session, store, inbox
+    ////  are all things needed to connect to email:
     val properties: Properties get() {
         val props = Properties()
         props.put("mail.smtp.host", "smtp.gmail.com")
@@ -25,6 +23,13 @@ class Moderator(val email: String, val password: String) {
         }
     })
     val store: Store = session.getStore("imaps")
+    private val inbox: Folder get() {
+        val inbox = store.getFolder("INBOX")
+        inbox.open(Folder.READ_ONLY)
+        return inbox
+    }
+
+    //// Date constants for yesterday and today:
     private val yesterday: Date get() {
         val yesterdayCal = Calendar.getInstance()
         yesterdayCal.timeZone = TimeZone.getTimeZone("America/Chicago")
@@ -48,32 +53,38 @@ class Moderator(val email: String, val password: String) {
         todayCal.set(Calendar.SECOND, 0)
         return todayCal.time
     }
-    private val inbox: Folder get() {
-        val inbox = store.getFolder("INBOX")
-        inbox.open(Folder.READ_ONLY)
-        return inbox
-    }
 
     init {
         store.connect("imap.gmail.com", 993, this.email, this.password)
     }
 
+    /**
+     * Emails Sympa to ask for the listserv's subscribers. Then, awkwardly, waits
+     *   two minutes (to be safe) and then check's its inbox for Sympa's reply.
+     *
+     *   Then it assembles the list of subscribers into a `Set`.
+     *
+     *   (This is a convenience method, combining the helper methods that follow.)
+     */
     private fun getSubscribers(): Set<String?> {
         this.requestSubscriberList()
         val timeOfRequest = Date()
 
-        emailStringBuilder.append("Sent email to Sympa requesting subscriber list at $timeOfRequest. \n")
-        emailStringBuilder.append("Pausing for 2 minutes...\n\n")
+        println("Sent email to Sympa requesting subscriber list at $timeOfRequest. \n")
+        println("Pausing for 2 minutes...\n\n")
 
         Thread.sleep(120000)
 
         val subscriberListMessage = this.searchForRecentSubscriberEmail(timeOfRequest).last()
 
-        emailStringBuilder.append("Subscriber list email received from Sympa at ${subscriberListMessage.receivedDate}\n\n")
+        println("Subscriber list email received from Sympa at ${subscriberListMessage.receivedDate}\n\n")
 
         return this.getSubscriberSetFromEmail(subscriberListMessage)
     }
 
+    /**
+     * Sends email to Sympa requesting subscribers (using Sympa email commands)
+     */
     private fun requestSubscriberList() {
         val message = MimeMessage(session)
         message.setFrom(InternetAddress(email))
@@ -84,6 +95,13 @@ class Moderator(val email: String, val password: String) {
         Transport.send(message)
     }
 
+    /**
+     * Searches through inbox for emails that meet the following criteria:
+     *   - they were received *after* we emailed Sympa asking for the subscriber list
+     *   - they had the subject line "REVIEW email_daily_or_be_removed"
+     *
+     *   These two criteria will get us the response from sympa with the subscriber list!
+     */
     private fun searchForRecentSubscriberEmail(timeRequestWasSent: Date): Array<Message> {
         val receivedSinceRequestWasSentTerm = ReceivedDateTerm(ComparisonTerm.GE, timeRequestWasSent)
         val subjectTerm = SubjectTerm("REVIEW email_daily_or_be_removed")
@@ -92,6 +110,10 @@ class Moderator(val email: String, val password: String) {
         return inbox.search(finalSearchTerm)
     }
 
+    /**
+     * Given the subscriber list email from Sympa, this function parses the email and
+     *  returns a set of strings containing the subscribers' email addresses.
+     */
     private fun getSubscriberSetFromEmail(subscriberListMessage: Message): Set<String?> {
         val subscriberListText = subscriberListMessage.content as String
 
@@ -107,6 +129,11 @@ class Moderator(val email: String, val password: String) {
         return subscribers
     }
 
+    /**
+     * Gathers the list of subscribers and the people who emailed
+     *  and determines who should get removed. Returns a set of those
+     *  people's email addresses.
+     */
     fun getEmailsToUnsubscribe(): Set<String?> {
         val subscribers = this.getSubscribers()
 
@@ -127,36 +154,23 @@ class Moderator(val email: String, val password: String) {
         //  Extract the email address using regex, and create a set of people who emailed the list.
         val peopleWhoEmailed = messages.map { Regex("<.*>").find(it.from[0].toString())?.value?.removeSurrounding("<", ">") }
                 .toSet()
-                .plus("emaildailymod@gmail.com") // Don't forget the automod! Don't delete the mod!
+                .plus("emaildailymod@gmail.com") // Make sure we don't delete the mod!
 
-        emailStringBuilder.append("People who emailed between $yesterday and $today: ${peopleWhoEmailed.count()}\n")
-        emailStringBuilder.append(peopleWhoEmailed.sortedBy {it})
-        emailStringBuilder.append("\n\n")
+        println("People who emailed between $yesterday and $today: ${peopleWhoEmailed.count()}\n")
+        println(peopleWhoEmailed.sortedBy {it})
+        println("\n\n")
 
-        emailStringBuilder.append("Current subscribers: ${subscribers.count()}\n")
-        emailStringBuilder.append(subscribers.sortedBy {it})
-        emailStringBuilder.append("\n\n")
+        println("Current subscribers: ${subscribers.count()}\n")
+        println(subscribers.sortedBy {it})
+        println("\n\n")
 
         // Subscribers - People Who Emailed = People who didn't email!
         return subscribers.minus(peopleWhoEmailed)
     }
 
-    fun sendEmailToMods(emailBody: String) {
-
-        // TODO: Extract this to a file?
-        val moderators = "earleyg@carleton.edu, garfinklei@carleton.edu"
-
-        val modEmails = InternetAddress.parse(moderators)
-
-        val message = MimeMessage(session)
-        message.setFrom(InternetAddress(email))
-        message.setRecipients(Message.RecipientType.TO, modEmails)
-        message.subject = "Auto Moderator Removals Update"
-        message.setText(emailBody)
-
-        Transport.send(message)
-    }
-
+    /**
+     * Email the listserv and announce who was removed. With photos!!
+     */
     fun emailListWithRemovals(removals: Set<String?>) {
         val emailList = "email_daily_or_be_removed@lists.carleton.edu"
         val listAddress = InternetAddress.parse(emailList)
@@ -189,6 +203,10 @@ class Moderator(val email: String, val password: String) {
         Transport.send(message)
     }
 
+    /**
+     * Given a set of email addresses, unsubscribe them from
+     *  the listserv, using Sympa email commands.
+     */
     fun unsubscribeUsers(emailAddresses: Set<String?>) {
         if (emailAddresses.isNotEmpty()) {
             val message = MimeMessage(session)
@@ -201,16 +219,4 @@ class Moderator(val email: String, val password: String) {
             Transport.send(message)
         }
     }
-}
-
-fun main(args: Array<String>) {
-    val mod = Moderator(EMAIL, PASSWORD)
-    // TODO: search for subscriber email until it arrives, instead of hardcoding 2 minutes
-
-    val emailsToUnsubscribe = mod.getEmailsToUnsubscribe()
-    emailsToUnsubscribe.forEach(::println)
-
-    mod.unsubscribeUsers(emailsToUnsubscribe)
-
-    mod.emailListWithRemovals(emailsToUnsubscribe)
 }
