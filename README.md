@@ -3,6 +3,8 @@ The `Moderator.kt` file contains the code to run the automoderator. The automode
 
 Once it knows who hasn't emailed, it sends an email command to Sympa to delete these people from the list. Then it sends an email to the listserv to announce the deletions (with pictures).
 
+The important stuff is in the `Moderator` class [here](https://github.com/grahamearley/email_daily-Auto-Moderator/blob/master/src/Moderator.kt). The actual calls made to that class are in the `main` function [here](https://github.com/grahamearley/email_daily-Auto-Moderator/blob/master/src/Main.kt).
+
 ### Installation
 The easiest way to run this script is to download IntelliJ and to load this project in IntelliJ.
 
