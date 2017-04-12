@@ -7,3 +7,6 @@ Once it knows who hasn't emailed, it sends an email command to Sympa to delete t
 The easiest way to run this script is to download IntelliJ and to load this project in IntelliJ.
 
 Then run the `main(...)` function in `Moderator.kt` with a single command-line argument: the password for the email daily mod gmail account.
+
+### Heroku
+This code is compiled into a .jar file and run each day via Heroku Scheduler. (That's what the `procfile` is for, as well as some of the code in the `build.gradle` file).
