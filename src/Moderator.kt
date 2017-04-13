@@ -225,4 +225,14 @@ class Moderator(val email: String, val password: String) {
             Transport.send(message)
         }
     }
+
+    fun sendDebugEmail(emailAddress: String, bodyText: String = "Debug email") {
+        val message = MimeMessage(session)
+        message.setFrom(InternetAddress(email))
+        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(emailAddress))
+        message.subject = "DEBUG EMAIL!"
+        message.setText(bodyText)
+
+        Transport.send(message)
+    }
 }
